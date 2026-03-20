@@ -1,0 +1,1322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SDL Drain Services & Plumbing | Delta, BC</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --gold: #C9A96E;
+    --gold-light: #E8D5A3;
+    --gold-dark: #A07840;
+    --navy: #0A0E1A;
+    --navy-mid: #111827;
+    --navy-light: #1C2537;
+    --white: #F8F6F0;
+    --gray: #8A8E99;
+    --red: #C0392B;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--navy);
+    color: var(--white);
+    font-family: 'Outfit', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* NOISE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1000;
+    opacity: 0.4;
+  }
+
+  /* NAV */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    padding: 24px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(10,14,26,0.95), transparent);
+    backdrop-filter: blur(2px);
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .nav-logo-icon {
+    width: 42px;
+    height: 42px;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+  }
+
+  .nav-logo-text {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+  }
+
+  .nav-logo-text span {
+    color: var(--gold);
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 40px;
+    list-style: none;
+  }
+
+  .nav-links a {
+    color: var(--gray);
+    text-decoration: none;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+
+  .nav-links a:hover { color: var(--gold); }
+
+  .nav-cta {
+    background: transparent;
+    border: 1px solid var(--gold);
+    color: var(--gold);
+    padding: 10px 28px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+  }
+
+  .nav-cta:hover {
+    background: var(--gold);
+    color: var(--navy);
+  }
+
+  /* HERO */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 140px 60px 80px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(201,169,110,0.1);
+    border: 1px solid rgba(201,169,110,0.3);
+    padding: 8px 20px;
+    border-radius: 100px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 40px;
+    width: fit-content;
+    animation: fadeUp 0.8s ease forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .hero-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    background: var(--gold);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.4); }
+  }
+
+  .hero-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(52px, 6vw, 86px);
+    font-weight: 300;
+    line-height: 1.05;
+    margin-bottom: 30px;
+    animation: fadeUp 0.8s ease 0.2s forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: var(--gold);
+  }
+
+  .hero-title strong {
+    font-weight: 700;
+    display: block;
+  }
+
+  .hero-desc {
+    font-size: 16px;
+    color: var(--gray);
+    line-height: 1.8;
+    max-width: 440px;
+    margin-bottom: 50px;
+    font-weight: 300;
+    animation: fadeUp 0.8s ease 0.4s forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    animation: fadeUp 0.8s ease 0.6s forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: var(--navy);
+    padding: 16px 40px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s;
+    text-decoration: none;
+    display: inline-block;
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(201,169,110,0.3);
+  }
+
+  .btn-secondary {
+    color: var(--white);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 1px;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: gap 0.3s;
+  }
+
+  .btn-secondary:hover { gap: 16px; color: var(--gold); }
+
+  .hero-stats {
+    display: flex;
+    gap: 50px;
+    margin-top: 70px;
+    padding-top: 50px;
+    border-top: 1px solid rgba(255,255,255,0.07);
+    animation: fadeUp 0.8s ease 0.8s forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 42px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-size: 12px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-top: 6px;
+  }
+
+  .hero-right {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-img-wrap {
+    position: absolute;
+    inset: 0;
+    background: var(--navy-light);
+  }
+
+  .hero-img-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(to right, var(--navy) 0%, transparent 30%),
+                linear-gradient(to top, var(--navy) 0%, transparent 40%);
+    z-index: 1;
+  }
+
+  .hero-pipes-bg {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(ellipse at 70% 30%, rgba(201,169,110,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 30% 80%, rgba(10,14,26,0.9) 0%, transparent 50%);
+    z-index: 2;
+  }
+
+  /* Decorative pipe SVG */
+  .pipe-decoration {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 3;
+    opacity: 0.15;
+    width: 100%;
+    height: 100%;
+  }
+
+  .hero-card {
+    position: absolute;
+    bottom: 80px;
+    left: -40px;
+    background: var(--navy-light);
+    border: 1px solid rgba(201,169,110,0.2);
+    padding: 24px 30px;
+    z-index: 5;
+    animation: fadeUp 1s ease 1s forwards;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .hero-card-top {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+
+  .stars { color: var(--gold); font-size: 14px; letter-spacing: 2px; }
+
+  .hero-card-rating {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--gold);
+  }
+
+  .hero-card-text {
+    font-size: 12px;
+    color: var(--gray);
+    line-height: 1.6;
+    max-width: 200px;
+  }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* EMERGENCY BANNER */
+  .emergency-banner {
+    background: linear-gradient(135deg, #C0392B, #922B21);
+    padding: 20px 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .emergency-banner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      45deg,
+      transparent,
+      transparent 10px,
+      rgba(255,255,255,0.03) 10px,
+      rgba(255,255,255,0.03) 20px
+    );
+  }
+
+  .emergency-left {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .emergency-icon {
+    width: 50px;
+    height: 50px;
+    background: rgba(255,255,255,0.15);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    animation: shake 2s infinite;
+  }
+
+  @keyframes shake {
+    0%, 90%, 100% { transform: rotate(0deg); }
+    92% { transform: rotate(-10deg); }
+    94% { transform: rotate(10deg); }
+    96% { transform: rotate(-6deg); }
+    98% { transform: rotate(6deg); }
+  }
+
+  .emergency-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 700;
+    margin-bottom: 2px;
+  }
+
+  .emergency-sub {
+    font-size: 13px;
+    opacity: 0.8;
+    font-weight: 300;
+  }
+
+  .emergency-phone {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-decoration: none;
+    color: white;
+    transition: opacity 0.3s;
+  }
+
+  .emergency-phone:hover { opacity: 0.8; }
+
+  /* SERVICES */
+  .services {
+    padding: 120px 60px;
+    position: relative;
+  }
+
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .section-label::before {
+    content: '';
+    width: 30px;
+    height: 1px;
+    background: var(--gold);
+  }
+
+  .section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(36px, 4vw, 58px);
+    font-weight: 300;
+    line-height: 1.1;
+    margin-bottom: 20px;
+  }
+
+  .section-title em { font-style: italic; color: var(--gold); }
+
+  .section-desc {
+    color: var(--gray);
+    font-size: 15px;
+    line-height: 1.8;
+    max-width: 500px;
+    margin-bottom: 70px;
+    font-weight: 300;
+  }
+
+  .services-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .service-card {
+    background: var(--navy-light);
+    padding: 48px 40px;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s;
+    cursor: default;
+  }
+
+  .service-card::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%; height: 3px;
+    background: linear-gradient(to right, var(--gold), var(--gold-dark));
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s;
+  }
+
+  .service-card:hover { background: #161e2e; transform: translateY(-4px); }
+  .service-card:hover::before { transform: scaleX(1); }
+
+  .service-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 60px;
+    font-weight: 700;
+    color: rgba(201,169,110,0.08);
+    position: absolute;
+    top: 20px; right: 30px;
+    line-height: 1;
+  }
+
+  .service-icon {
+    font-size: 32px;
+    margin-bottom: 24px;
+    display: block;
+  }
+
+  .service-name {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .service-desc {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* WHY US */
+  .why {
+    padding: 120px 60px;
+    background: var(--navy-light);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 100px;
+    align-items: center;
+  }
+
+  .why-features {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .why-feature {
+    padding: 32px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    transition: all 0.3s;
+  }
+
+  .why-feature:hover .feature-icon {
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: var(--navy);
+  }
+
+  .feature-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border: 1px solid rgba(201,169,110,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.3s;
+    color: var(--gold);
+  }
+
+  .feature-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 6px;
+  }
+
+  .feature-desc {
+    font-size: 14px;
+    color: var(--gray);
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  .why-visual {
+    position: relative;
+  }
+
+  .why-big-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 200px;
+    font-weight: 700;
+    color: rgba(201,169,110,0.05);
+    line-height: 1;
+    position: absolute;
+    top: -40px;
+    left: -20px;
+  }
+
+  .why-cards {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .why-stat-card {
+    background: var(--navy);
+    border: 1px solid rgba(201,169,110,0.15);
+    padding: 36px 28px;
+    text-align: center;
+    transition: border-color 0.3s;
+  }
+
+  .why-stat-card:hover { border-color: var(--gold); }
+
+  .why-stat-card:first-child {
+    grid-column: span 2;
+    background: linear-gradient(135deg, rgba(201,169,110,0.1), rgba(201,169,110,0.05));
+    border-color: rgba(201,169,110,0.3);
+  }
+
+  .why-stat-num {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 52px;
+    font-weight: 700;
+    color: var(--gold);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+
+  .why-stat-label {
+    font-size: 12px;
+    color: var(--gray);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  /* REVIEWS */
+  .reviews {
+    padding: 120px 60px;
+  }
+
+  .reviews-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 60px;
+  }
+
+  .reviews-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 2px;
+  }
+
+  .review-card {
+    background: var(--navy-light);
+    padding: 44px 36px;
+    position: relative;
+    transition: all 0.3s;
+  }
+
+  .review-card:hover { background: #161e2e; }
+
+  .review-quote {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 80px;
+    color: var(--gold);
+    opacity: 0.2;
+    line-height: 0.6;
+    margin-bottom: 20px;
+  }
+
+  .review-text {
+    font-size: 15px;
+    color: var(--white);
+    line-height: 1.8;
+    font-weight: 300;
+    margin-bottom: 30px;
+    font-style: italic;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+  }
+
+  .review-author {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .review-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .review-name {
+    font-weight: 600;
+    font-size: 14px;
+  }
+
+  .review-meta {
+    font-size: 12px;
+    color: var(--gold);
+    margin-top: 2px;
+  }
+
+  .review-stars {
+    color: var(--gold);
+    font-size: 12px;
+    letter-spacing: 2px;
+    margin-bottom: 20px;
+  }
+
+  /* SERVICE AREAS */
+  .areas {
+    padding: 80px 60px;
+    background: var(--navy-light);
+    text-align: center;
+  }
+
+  .areas-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 14px;
+    font-weight: 400;
+    color: var(--gray);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 30px;
+  }
+
+  .areas-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+  }
+
+  .area-tag {
+    background: var(--navy);
+    border: 1px solid rgba(201,169,110,0.2);
+    color: var(--white);
+    padding: 10px 24px;
+    font-size: 13px;
+    font-weight: 400;
+    transition: all 0.3s;
+  }
+
+  .area-tag:hover {
+    border-color: var(--gold);
+    color: var(--gold);
+  }
+
+  /* CONTACT */
+  .contact {
+    padding: 120px 60px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 100px;
+    align-items: center;
+  }
+
+  .contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+    margin-top: 40px;
+  }
+
+  .contact-item {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+  }
+
+  .contact-icon {
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
+    border: 1px solid rgba(201,169,110,0.3);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    color: var(--gold);
+  }
+
+  .contact-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 6px;
+  }
+
+  .contact-value {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 22px;
+    font-weight: 400;
+  }
+
+  .contact-form {
+    background: var(--navy-light);
+    padding: 56px 48px;
+    border: 1px solid rgba(201,169,110,0.1);
+  }
+
+  .form-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 32px;
+    font-weight: 300;
+    margin-bottom: 8px;
+  }
+
+  .form-sub {
+    font-size: 14px;
+    color: var(--gray);
+    margin-bottom: 36px;
+    font-weight: 300;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+
+  .form-group {
+    margin-bottom: 20px;
+  }
+
+  .form-group label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 10px;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    width: 100%;
+    background: var(--navy);
+    border: 1px solid rgba(255,255,255,0.08);
+    color: var(--white);
+    padding: 14px 18px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 14px;
+    font-weight: 300;
+    outline: none;
+    transition: border-color 0.3s;
+    appearance: none;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus,
+  .form-group select:focus {
+    border-color: var(--gold);
+  }
+
+  .form-group textarea { resize: vertical; min-height: 100px; }
+
+  .form-submit {
+    width: 100%;
+    background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+    color: var(--navy);
+    border: none;
+    padding: 18px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.3s;
+    margin-top: 8px;
+  }
+
+  .form-submit:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(201,169,110,0.25);
+  }
+
+  /* FOOTER */
+  footer {
+    background: #060912;
+    padding: 60px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .footer-logo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 20px;
+    font-weight: 600;
+  }
+
+  .footer-logo span { color: var(--gold); }
+
+  .footer-copy {
+    font-size: 12px;
+    color: var(--gray);
+    font-weight: 300;
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 30px;
+  }
+
+  .footer-links a {
+    font-size: 12px;
+    color: var(--gray);
+    text-decoration: none;
+    transition: color 0.3s;
+    letter-spacing: 1px;
+  }
+
+  .footer-links a:hover { color: var(--gold); }
+
+  /* SCROLL ANIMATIONS */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* GOLD DIVIDER */
+  .gold-divider {
+    width: 60px;
+    height: 2px;
+    background: linear-gradient(to right, var(--gold), var(--gold-dark));
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <div class="nav-logo-icon">🔧</div>
+    <div class="nav-logo-text"><span>SDL</span> Drain & Plumbing</div>
+  </div>
+  <ul class="nav-links">
+    <li><a href="#services">Services</a></li>
+    <li><a href="#why">About</a></li>
+    <li><a href="#reviews">Reviews</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
+  <a href="tel:6046182965" class="nav-cta">Call Now</a>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-badge">Licensed & Insured · Delta, BC</div>
+    <h1 class="hero-title">
+      Premium <em>Drain</em><br>
+      <strong>& Plumbing</strong><br>
+      Services
+    </h1>
+    <p class="hero-desc">Delta's trusted plumbing specialists. Residential and commercial drain cleaning, pipe repair, and full plumbing installations — done right the first time.</p>
+    <div class="hero-actions">
+      <a href="#contact" class="btn-primary">Get Free Quote</a>
+      <a href="tel:6046182965" class="btn-secondary">📞 (604) 618-2965 →</a>
+    </div>
+    <div class="hero-stats">
+      <div>
+        <div class="stat-num">5.0</div>
+        <div class="stat-label">Google Rating</div>
+      </div>
+      <div>
+        <div class="stat-num">24/7</div>
+        <div class="stat-label">Emergency Service</div>
+      </div>
+      <div>
+        <div class="stat-num">100%</div>
+        <div class="stat-label">Satisfaction</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-right">
+    <div class="hero-img-wrap">
+      <div class="hero-pipes-bg"></div>
+      <div class="hero-img-overlay"></div>
+      <svg class="pipe-decoration" viewBox="0 0 600 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="200" y="0" width="40" height="800" fill="rgba(201,169,110,0.15)" rx="4"/>
+        <rect x="300" y="200" width="300" height="40" fill="rgba(201,169,110,0.1)" rx="4"/>
+        <rect x="360" y="240" width="40" height="400" fill="rgba(201,169,110,0.1)" rx="4"/>
+        <rect x="100" y="400" width="200" height="30" fill="rgba(201,169,110,0.08)" rx="4"/>
+        <circle cx="200" cy="200" r="30" stroke="rgba(201,169,110,0.3)" stroke-width="8" fill="none"/>
+        <circle cx="360" cy="240" r="24" stroke="rgba(201,169,110,0.2)" stroke-width="6" fill="none"/>
+        <circle cx="360" cy="640" r="24" stroke="rgba(201,169,110,0.2)" stroke-width="6" fill="none"/>
+        <rect x="440" y="100" width="20" height="200" fill="rgba(201,169,110,0.06)" rx="2"/>
+        <rect x="500" y="300" width="100" height="20" fill="rgba(201,169,110,0.06)" rx="2"/>
+      </svg>
+    </div>
+    <div class="hero-card reveal">
+      <div class="hero-card-top">
+        <div class="stars">★★★★★</div>
+        <div class="hero-card-rating">5.0</div>
+      </div>
+      <div class="hero-card-text">"SDL provides exceptional services, highly recommend."<br><br>— Karan S., Delta BC</div>
+    </div>
+  </div>
+</section>
+
+<!-- EMERGENCY BANNER -->
+<div class="emergency-banner">
+  <div class="emergency-left">
+    <div class="emergency-icon">🚨</div>
+    <div>
+      <div class="emergency-title">24/7 Emergency Plumbing</div>
+      <div class="emergency-sub">Burst pipes, flooding, no hot water — we respond fast, any time of day</div>
+    </div>
+  </div>
+  <a href="tel:6046182965" class="emergency-phone">(604) 618-2965</a>
+</div>
+
+<!-- SERVICES -->
+<section class="services" id="services">
+  <div class="section-label">What We Do</div>
+  <h2 class="section-title">Expert Solutions for<br><em>Every Plumbing Need</em></h2>
+  <p class="section-desc">From clogged drains to full system installations, SDL handles it all with precision and care.</p>
+
+  <div class="services-grid">
+    <div class="service-card reveal">
+      <div class="service-num">01</div>
+      <span class="service-icon">🚿</span>
+      <div class="service-name">Drain Cleaning</div>
+      <div class="service-desc">Blocked drains cleared fast using professional-grade equipment. Kitchen, bathroom, floor drains and more.</div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-num">02</div>
+      <span class="service-icon">🔩</span>
+      <div class="service-name">Pipe Repair & Installation</div>
+      <div class="service-desc">Leaking, burst, or corroded pipes repaired or fully replaced with quality materials built to last.</div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-num">03</div>
+      <span class="service-icon">🌊</span>
+      <div class="service-name">Water & Drainage Systems</div>
+      <div class="service-desc">Complete installation and maintenance of residential and commercial water and drainage infrastructure.</div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-num">04</div>
+      <span class="service-icon">🔥</span>
+      <div class="service-name">Water Heater Services</div>
+      <div class="service-desc">Hot water tank installation, repair, and replacement for all makes and models.</div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-num">05</div>
+      <span class="service-icon">🏠</span>
+      <div class="service-name">Residential Plumbing</div>
+      <div class="service-desc">Full-service home plumbing — from faucet repairs and toilet installations to complete bathroom renovations.</div>
+    </div>
+    <div class="service-card reveal">
+      <div class="service-num">06</div>
+      <span class="service-icon">🏢</span>
+      <div class="service-name">Commercial Plumbing</div>
+      <div class="service-desc">Professional plumbing services for businesses, strata complexes, and commercial properties in the Lower Mainland.</div>
+    </div>
+  </div>
+</section>
+
+<!-- WHY US -->
+<section class="why" id="why">
+  <div>
+    <div class="section-label">Why SDL</div>
+    <h2 class="section-title">Built on Trust,<br><em>Backed by Results</em></h2>
+    <p class="section-desc" style="margin-bottom:0">Delta families and businesses choose SDL because we show up on time, fix it right, and treat your home like our own.</p>
+    <div class="why-features">
+      <div class="why-feature reveal">
+        <div class="feature-icon">⚡</div>
+        <div>
+          <div class="feature-title">Fast Response Times</div>
+          <div class="feature-desc">We understand plumbing emergencies can't wait. Same-day service and 24/7 emergency response.</div>
+        </div>
+      </div>
+      <div class="why-feature reveal">
+        <div class="feature-icon">🛡️</div>
+        <div>
+          <div class="feature-title">Fully Licensed & Insured</div>
+          <div class="feature-desc">All work is performed by licensed plumbers. Your home and family are fully protected.</div>
+        </div>
+      </div>
+      <div class="why-feature reveal">
+        <div class="feature-icon">💰</div>
+        <div>
+          <div class="feature-title">Upfront, Fair Pricing</div>
+          <div class="feature-desc">No hidden fees. We give you a clear quote before starting any work — no surprises on your bill.</div>
+        </div>
+      </div>
+      <div class="why-feature reveal">
+        <div class="feature-icon">✅</div>
+        <div>
+          <div class="feature-title">Work Guaranteed</div>
+          <div class="feature-desc">Every job is backed by our satisfaction guarantee. We don't leave until the job is done right.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="why-visual reveal">
+    <div class="why-big-num">5★</div>
+    <div class="why-cards">
+      <div class="why-stat-card">
+        <div class="why-stat-num">5.0 ★</div>
+        <div class="why-stat-label">Perfect Google Rating</div>
+      </div>
+      <div class="why-stat-card">
+        <div class="why-stat-num">24/7</div>
+        <div class="why-stat-label">Always Available</div>
+      </div>
+      <div class="why-stat-card">
+        <div class="why-stat-num">100%</div>
+        <div class="why-stat-label">Satisfaction Rate</div>
+      </div>
+      <div class="why-stat-card">
+        <div class="why-stat-num">0</div>
+        <div class="why-stat-label">Hidden Fees</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- REVIEWS -->
+<section class="reviews" id="reviews">
+  <div class="reviews-header">
+    <div>
+      <div class="section-label">Testimonials</div>
+      <h2 class="section-title">What Clients<br><em>Say About Us</em></h2>
+    </div>
+    <div style="text-align:right">
+      <div style="font-family:'Cormorant Garamond',serif;font-size:64px;font-weight:700;color:var(--gold);line-height:1">5.0</div>
+      <div style="color:var(--gold);font-size:18px;letter-spacing:4px">★★★★★</div>
+      <div style="color:var(--gray);font-size:12px;margin-top:6px">Google Reviews</div>
+    </div>
+  </div>
+
+  <div class="reviews-grid">
+    <div class="review-card reveal">
+      <div class="review-stars">★★★★★</div>
+      <div class="review-quote">"</div>
+      <div class="review-text">SDL provides exceptional services. They came out same day, fixed our blocked drain quickly and left everything spotless. Pricing was totally fair and the technician was super professional.</div>
+      <div class="review-author">
+        <div class="review-avatar">K</div>
+        <div>
+          <div class="review-name">Karan Sangha</div>
+          <div class="review-meta">Delta, BC · Verified Google Review</div>
+        </div>
+      </div>
+    </div>
+    <div class="review-card reveal">
+      <div class="review-stars">★★★★★</div>
+      <div class="review-quote">"</div>
+      <div class="review-text">These guys went above and beyond. Had a nasty pipe issue in our basement and they diagnosed it fast, explained everything clearly, and had it fixed the same day. Highly recommend.</div>
+      <div class="review-author">
+        <div class="review-avatar">P</div>
+        <div>
+          <div class="review-name">Prabraj Sohal</div>
+          <div class="review-meta">Delta, BC · Verified Google Review</div>
+        </div>
+      </div>
+    </div>
+    <div class="review-card reveal">
+      <div class="review-stars">★★★★★</div>
+      <div class="review-quote">"</div>
+      <div class="review-text">Called SDL at 11pm for an emergency and they showed up within the hour. Incredibly responsive and professional. You can tell they actually care about the job they do. Will use again.</div>
+      <div class="review-author">
+        <div class="review-avatar">R</div>
+        <div>
+          <div class="review-name">Ranjit Dhaliwal</div>
+          <div class="review-meta">Surrey, BC · Verified Google Review</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SERVICE AREAS -->
+<section class="areas">
+  <div class="areas-title">Serving the Greater Vancouver Area</div>
+  <div class="areas-list">
+    <div class="area-tag">Delta</div>
+    <div class="area-tag">Surrey</div>
+    <div class="area-tag">Ladner</div>
+    <div class="area-tag">Tsawwassen</div>
+    <div class="area-tag">North Delta</div>
+    <div class="area-tag">Burnaby</div>
+    <div class="area-tag">Richmond</div>
+    <div class="area-tag">New Westminster</div>
+    <div class="area-tag">Langley</div>
+    <div class="area-tag">Cloverdale</div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section class="contact" id="contact">
+  <div>
+    <div class="section-label">Get In Touch</div>
+    <h2 class="section-title">Request a<br><em>Free Quote</em></h2>
+    <p class="section-desc">Available 24/7 for emergencies. Call us directly or fill out the form and we'll get back to you fast.</p>
+    <div class="contact-info">
+      <div class="contact-item reveal">
+        <div class="contact-icon">📞</div>
+        <div>
+          <div class="contact-label">Phone</div>
+          <div class="contact-value">(604) 618-2965</div>
+        </div>
+      </div>
+      <div class="contact-item reveal">
+        <div class="contact-icon">📍</div>
+        <div>
+          <div class="contact-label">Location</div>
+          <div class="contact-value">11720 74b Ave, Delta, BC</div>
+        </div>
+      </div>
+      <div class="contact-item reveal">
+        <div class="contact-icon">🕐</div>
+        <div>
+          <div class="contact-label">Hours</div>
+          <div class="contact-value">Open 24 Hours · 7 Days a Week</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="contact-form reveal">
+    <div class="form-title">Send Us a Message</div>
+    <div class="form-sub">We'll respond within 1 hour during business hours</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>First Name</label>
+        <input type="text" placeholder="John">
+      </div>
+      <div class="form-group">
+        <label>Last Name</label>
+        <input type="text" placeholder="Smith">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Phone Number</label>
+      <input type="tel" placeholder="(604) 000-0000">
+    </div>
+    <div class="form-group">
+      <label>Service Needed</label>
+      <select>
+        <option value="">Select a service...</option>
+        <option>Drain Cleaning</option>
+        <option>Pipe Repair</option>
+        <option>Water Heater</option>
+        <option>Emergency Service</option>
+        <option>Other</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Message</label>
+      <textarea placeholder="Describe your issue..."></textarea>
+    </div>
+    <button class="form-submit">Request Free Quote →</button>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-logo"><span>SDL</span> Drain Services & Plumbing</div>
+  <div class="footer-copy">© 2025 SDL Drain Services & Plumbing · Delta, BC · Licensed & Insured</div>
+  <div class="footer-links">
+    <a href="#services">Services</a>
+    <a href="#reviews">Reviews</a>
+    <a href="#contact">Contact</a>
+  </div>
+</footer>
+
+<script>
+  // Scroll reveal
+  const reveals = document.querySelectorAll('.reveal');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+      }
+    });
+  }, { threshold: 0.1 });
+  reveals.forEach(el => observer.observe(el));
+
+  // Stagger service cards
+  document.querySelectorAll('.service-card').forEach((card, i) => {
+    card.style.transitionDelay = `${i * 0.08}s`;
+  });
+</script>
+</body>
+</html>
